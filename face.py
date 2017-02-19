@@ -55,7 +55,7 @@ def calc_angle(img, cascade, predictor, fd, scale_factor):
     # Make sure we ended up with a face
     if landmarks == None and delta_angle == 0:
         print "No face detected."
-        return None, delta_angle, 0
+        return None, delta_angle, 0, 0
     elif landmarks == None and delta_angle != 0:
         if delta_angle > 0:
             return landmarks, delta_angle, 100
@@ -64,7 +64,7 @@ def calc_angle(img, cascade, predictor, fd, scale_factor):
 
     # Unrotate the face
     if i != 0:
-        for i in [0, 1, 2, 3, 13, 14, 15, 16, 27, 28, 29, 30]:
+        for i in [0, 1, 2, 3, 13, 14, 15, 16, 27, 28, 29, 30, 50, 58, 52, 56]:
             # Translate
             landmarks[i,0] -= (cols/2)
             landmarks[i,1] -= (rows/2)
@@ -93,9 +93,17 @@ def calc_angle(img, cascade, predictor, fd, scale_factor):
     nose_mult = (landmarks[1,0] - landmarks[15,0]) / (landmarks[27,1] - landmarks[30,1])
     angle = ((nose_angle * nose_mult) + cross_avg) / 2.0
 
-    #print angle
- 
-    return landmarks, delta_angle, angle
+    # Calculate mouth
+    # find lines
+    left_line = map(lambda x: [landmarks[x,0], landmarks[x,1]], [50, 58])
+    right_line = map(lambda x: [landmarks[x,0], landmarks[x,1]], [52, 56])
+    # calc distance
+    left_distance = numpy.linalg.norm(numpy.array(left_line[0])-numpy.array(left_line[1]))
+    right_distance = numpy.linalg.norm(numpy.array(right_line[0])-numpy.array(right_line[1]))
+    # avg distances
+    avg_mouth = (left_distance + right_distance) / 2.0
+    
+    return landmarks, delta_angle, angle, avg_mouth
 
 def get_landmarks(img, rects, predictor):
     x, y, w, h = rects[0].astype(long)
@@ -109,7 +117,7 @@ def paint_frame(img, landmarks, angle, delta_angle):
 
         # Draw points
         for idx, point in enumerate(landmarks):
-            if (idx in [1, 2, 3, 13, 14, 15, 27, 28, 29, 30]): 
+            if (idx in [1, 2, 3, 13, 14, 15, 27, 28, 29, 30, 50, 58, 52, 56]): 
                 pos = (point[0, 0], point[0, 1])
                 cv2.circle(img_an, pos, 3, color=(0, 255, 0))
             elif (idx in range(26) and delta_angle == 0):
@@ -122,10 +130,14 @@ def paint_frame(img, landmarks, angle, delta_angle):
         segment_3 = [3, 29, 13]
         segment_around = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17]
         segment_nose = [27, 28, 29, 30]
+        segment_mouth_l = [50, 58]
+        segment_mouth_r = [52, 56]
 
         cv2.polylines(img_an, [numpy.array(map(lambda x: [landmarks[x,0], landmarks[x,1]], segment_1), numpy.int32).reshape((-1,1,2))], isClosed=False, color=(0, 255, 0), thickness=1)
         cv2.polylines(img_an, [numpy.array(map(lambda x: [landmarks[x,0], landmarks[x,1]], segment_2), numpy.int32).reshape((-1,1,2))], isClosed=False, color=(0, 255, 0), thickness=1)
         cv2.polylines(img_an, [numpy.array(map(lambda x: [landmarks[x,0], landmarks[x,1]], segment_3), numpy.int32).reshape((-1,1,2))], isClosed=False, color=(0, 255, 0), thickness=1)
+        cv2.polylines(img_an, [numpy.array(map(lambda x: [landmarks[x,0], landmarks[x,1]], segment_mouth_l), numpy.int32).reshape((-1,1,2))], isClosed=False, color=(0, 255, 0), thickness=1)
+        cv2.polylines(img_an, [numpy.array(map(lambda x: [landmarks[x,0], landmarks[x,1]], segment_mouth_r), numpy.int32).reshape((-1,1,2))], isClosed=False, color=(0, 255, 0), thickness=1)
 
         if delta_angle == 0:
             cv2.polylines(img_an, [numpy.array(map(lambda x: [landmarks[x,0], landmarks[x,1]], segment_around), numpy.int32).reshape((-1,1,2))], isClosed=True, color=(30, 30, 30), thickness=1)
@@ -163,12 +175,16 @@ def Press(action):
         k.press_key('J')
     elif action == "LEFT":
         k.press_key('I')
+    elif action == "MOUTH":
+        k.press_key('A')
 
 def Release(action):
     if action == "RIGHT":
         k.release_key('J')
     elif action == "LEFT":
         k.release_key('I')
+    elif action == "MOUTH":
+        k.release_key('A')
 
 def take_action(action, strength, state, counter):
     limit = strength * 4
@@ -186,6 +202,12 @@ def take_action(action, strength, state, counter):
         Press(action)
         counter = 0
     return action, counter
+
+def handle_mouth(mouth):
+    if mouth > 25:
+        Press("MOUTH")
+    else:
+        Release("MOUTH")
 
 def smooth(angle, past_angles):
     past_angles = past_angles[1:]
@@ -214,14 +236,15 @@ def main():
         img = cv2.resize(img, (0,0), fx=0.35, fy=0.35) # Squish img
         
         # Analyze & Annotate
-        landmarks, LAST_FRAME_DELTA, angle = calc_angle(img, cascade, predictor, LAST_FRAME_DELTA, SCALE_FACTOR)
+        landmarks, LAST_FRAME_DELTA, angle, mouth = calc_angle(img, cascade, predictor, LAST_FRAME_DELTA, SCALE_FACTOR)
         angle, past_angles = smooth(angle, past_angles)
         img = paint_frame(img, landmarks, angle, LAST_FRAME_DELTA) # Annotate frame
         cv2.imshow('webcam', img)
 
         # Figure out what direction to turn
         current_action, strength = compute_action(angle, state, 15, 10)
-        state, counter = take_action(current_action, strength, state, counter);        
+        state, counter = take_action(current_action, strength, state, counter);
+        handle_mouth(mouth)
     
         # Break loop on esc
         if cv2.waitKey(1) == 27:
