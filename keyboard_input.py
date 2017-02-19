@@ -8,13 +8,14 @@ from pykeyboard import PyKeyboard
 m = PyMouse()
 k = PyKeyboard()
 
-x_dim, y_dim = m.screen_size()
-m.click(x_dim/2, y_dim/2, 1)
+# If you wanna click in the middle of the screen real automatic like
+#x_dim, y_dim = m.screen_size()
+#m.click(x_dim/2, y_dim/2, 1)
 
 def accelerate():
-	k.press_key('option')
+	k.press_key('space')
 	time.sleep(0.5)
-	k.release_key('option')
+	k.release_key('space')
 
 def turnRight():
 	k.press_key('J')
@@ -22,12 +23,12 @@ def turnRight():
 	k.release_key('J')
 
 def turnLeft():
-	k.press_key('G')
+	k.press_key('I')
 	time.sleep(0.1)
-	k.release_key('G')
+	k.release_key('I')
 
 def powerUp():
-	k.press_key('command')
+	k.press_key('enter')
 	time.sleep(0.5)
-	k.release_key('command')
+	k.release_key('enter')
 
