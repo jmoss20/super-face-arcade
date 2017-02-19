@@ -2,6 +2,7 @@ import cv2
 import dlib
 import numpy
 import math
+import time
 
 # For key input
 import sys, os
@@ -140,41 +141,56 @@ def paint_frame(img, landmarks, angle, delta_angle):
     else:
         return img
 
-def compute_direction(angle, margin):
-    if (angle < (0 - margin)):
-        return "LEFT"
-    elif (angle > margin):
-        return "RIGHT"
-    return None
+def compute_action(angle, state, margin_in, margin_out):
+    # Calc strength
+    strength = math.fabs(angle) / 35.0 
 
-def take_action(direction):
-        if direction == "RIGHT":
-            turnLeftRelease()
-            turnRightRelease()
-            turnRightPress()
-        elif direction == "LEFT":
-            turnLeftRelease()
-            turnRightRelease()
-            turnLeftPress() 
+    if state == None:
+        if (angle > margin_out):
+            return "LEFT", strength
+        elif (angle < (0 - margin_out)):
+            return "RIGHT", strength
+        return None, 0
+    else:
+        if (angle > margin_in):
+            return "LEFT", strength
+        elif (angle < (0 - margin_out)):
+            return "RIGHT", strength
+        return None, 0
+
+def Press(action):
+    if action == "RIGHT":
+        k.press_key('J')
+    elif action == "LEFT":
+        k.press_key('I')
+
+def Release(action):
+    if action == "RIGHT":
+        k.release_key('J')
+    elif action == "LEFT":
+        k.release_key('I')
+
+def take_action(action, strength, state, counter):
+    limit = strength * 4
+    if state == action:
+        if counter > limit:
+            Release(action)
+            counter = 0
+        elif counter == 0:
+            Press(action)
+            counter += 1
         else:
-            turnLeftRelease()
-            turnRightRelease()
+            counter += 1
+    else:
+        Release(state)
+        Press(action)
+        counter = 0
+    return action, counter
 
-def turnRightPress():
-    k.press_key('I')
-    #time.sleep(0.05)
-    #k.release_key('I')
-
-def turnLeftPress():
-    k.press_key('J')
-    #time.sleep(0.05)
-    #k.release_key('J')
-
-def turnRightRelease():
-    k.release_key('I')
-
-def turnLeftRelease():
-    k.release_key('J')
+def smooth(angle, past_angles):
+    past_angles = past_angles[1:]
+    past_angles.append(angle)
+    return sum(past_angles)/len(past_angles), past_angles
 
 def main():
     cam = cv2.VideoCapture(0)
@@ -182,6 +198,13 @@ def main():
     cascade = cv2.CascadeClassifier(CASCADE_PATH)
     LAST_FRAME_DELTA = 0
     SCALE_FACTOR = 1.3
+    past_angles = [0] * 3
+    
+    # Action
+    current_action = None
+    strength = 0
+    state = None
+    counter = 0
 
     # Main Loop
     while True:
@@ -192,13 +215,14 @@ def main():
         
         # Analyze & Annotate
         landmarks, LAST_FRAME_DELTA, angle = calc_angle(img, cascade, predictor, LAST_FRAME_DELTA, SCALE_FACTOR)
+        angle, past_angles = smooth(angle, past_angles)
         img = paint_frame(img, landmarks, angle, LAST_FRAME_DELTA) # Annotate frame
         cv2.imshow('webcam', img)
 
         # Figure out what direction to turn
-        direction = compute_direction(angle, 10)
-        take_action(direction)
- 
+        current_action, strength = compute_action(angle, state, 15, 10)
+        state, counter = take_action(current_action, strength, state, counter);        
+    
         # Break loop on esc
         if cv2.waitKey(1) == 27:
             break
