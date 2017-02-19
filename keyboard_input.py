@@ -31,4 +31,3 @@ def powerUp():
 	time.sleep(0.5)
 	k.release_key('command')
 
-powerUp()
