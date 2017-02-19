@@ -203,8 +203,8 @@ def take_action(action, strength, state, counter):
         counter = 0
     return action, counter
 
-def handle_mouth(mouth):
-    if mouth > 25:
+def handle_mouth(mouth, threshold):
+    if mouth > threshold:
         Press("MOUTH")
     else:
         Release("MOUTH")
@@ -244,7 +244,7 @@ def main():
         # Figure out what direction to turn
         current_action, strength = compute_action(angle, state, 15, 10)
         state, counter = take_action(current_action, strength, state, counter);
-        handle_mouth(mouth)
+        handle_mouth(mouth, 15)
     
         # Break loop on esc
         if cv2.waitKey(1) == 27:
