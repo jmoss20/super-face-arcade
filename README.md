@@ -8,9 +8,9 @@ Submission for MadHacks 2017, a 24 hour Hackathon at the University of Wisconsin
 Demo: https://www.youtube.com/watch?v=uVWQby5dpvA
 
 ### Dependencies
- * OpenCV2
- * dlib
- * PyUserInput
+ * OpenCV 2
+ * (dlib)[https://github.com/davisking/dlib]
+ * (PyUserInput)[https://github.com/SavinaRoja/PyUserInput]
  * Emulator: bnes99 (should work with any, but may need to remap controls)
 
 ### Tips
