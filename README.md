@@ -9,8 +9,8 @@ Demo: https://www.youtube.com/watch?v=uVWQby5dpvA
 
 ### Dependencies
  * OpenCV 2
- * (dlib)[https://github.com/davisking/dlib]
- * (PyUserInput)[https://github.com/SavinaRoja/PyUserInput]
+ * [dlib](https://github.com/davisking/dlib)
+ * [PyUserInput](https://github.com/SavinaRoja/PyUserInput)
  * Emulator: bnes99 (should work with any, but may need to remap controls)
 
 ### Tips
